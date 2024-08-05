@@ -35,8 +35,8 @@ class TypingTest(ctk.CTkFrame):
 
     def on_press(self, event) -> None:
         if self.current_char_index == 0:
-            self.start_timer()
             self.cancel = False
+            self.start_timer()
         if len(self.sentence) == self.current_char_index and event.keysym != 'BackSpace':
             return
         char: str = event.char
@@ -64,8 +64,8 @@ class TypingTest(ctk.CTkFrame):
         if self.current_char_index != len(self.sentence):
             return
         if event.keysym == 'Return':
-            self.restart()
             self.end_timer()
+            self.restart()
 
     def get_sentence(self) -> str:
         return self.sentence_gen.sentence()
@@ -75,7 +75,7 @@ class TypingTest(ctk.CTkFrame):
             self.create_char_label(char, self.sentence_frame)
 
     def create_char_label(self, char: str, frame: ctk.CTkFrame) -> None:
-        char_label = ctk.CTkLabel(frame, text=char, font=self.font, corner_radius=3,
+        char_label = ctk.CTkLabel(frame, text=char, font=self.font, corner_radius=3, fg_color=COLOR.BACKGROUND,
                                 text_color=COLOR.TEXT if frame is self.sentence_frame else COLOR.GRAY,)
         char_label.pack(side=ctk.LEFT, padx=2, pady=2)
         if frame is self.sentence_frame:
@@ -96,11 +96,12 @@ class TypingTest(ctk.CTkFrame):
         self.after(221, lambda: self.user_inputs.pop(0))
 
     def restart(self) -> None:
-        self.sentence = self.sentence_gen.sentence()
+        self.cancel = True
+        self.bad_chars = 0
+        self.penalty = .5
+        self.master.unbind('<KeyPress>')
+        self.master.unbind('<KeyRelease>')
         self.animate_hide(val=0)
-        self.char_labels = []
-        self.user_inputs = []
-        self.current_char_index = 0
 
     def start_timer(self) -> None:
         self.start_time = time.time()
@@ -122,24 +123,27 @@ class TypingTest(ctk.CTkFrame):
         self.master.update_counter(wpm, cpm)
 
     def animate_hide(self, val: float) -> None:
-        if val >= 0.9:
+        if val >= .9:
             for child in self.sentence_frame.winfo_children():
                 child.destroy()
             for child in self.user_input_frame.winfo_children():
                 child.destroy()
-        if val >= 0.99:
-            self.animate_show(val=0)
-            return
-        pywinstyles.set_opacity(self, value=0.9-val, color='#000001')
-        pywinstyles.set_opacity(self, value=0.9-val, color='#000001')
-        self.master.after(21, lambda: self.animate_hide(val=val+0.03))
-
-    def animate_show(self, val: float) -> None:
-        if val == 0:
+        if val >= .99:
+            self.sentence = self.sentence_gen.sentence()
+            self.current_char_index = 0
+            self.char_labels = []
+            self.user_inputs = []
             self.display_sentence()
             self.update_height()
-        if val >= 0.99:
+            self.master.bind('<KeyPress>', self.on_press)
+            self.master.bind('<KeyRelease>', self.on_release)
+            self.animate_show(val=0)
             return
-        pywinstyles.set_opacity(self, value=0+val, color='#000001')
-        pywinstyles.set_opacity(self, value=0+val, color='#000001')
-        self.master.after(21, lambda: self.animate_show(val=val+0.03))
+        pywinstyles.set_opacity(self, value=(0.9-val), color='#000001')
+        self.master.after(16, lambda: self.animate_hide(val=val+0.03))
+
+    def animate_show(self, val: float) -> None:
+        if val >= .99:
+            return
+        pywinstyles.set_opacity(self, value=(0+val), color='#000001')
+        self.master.after(16, lambda: self.animate_show(val=val+0.03))
