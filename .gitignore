@@ -3,3 +3,4 @@ mypy.ini
 .vscode
 .mypy_cache
 src/__pycache__/
+typing_stats.db
