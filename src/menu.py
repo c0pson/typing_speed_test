@@ -79,13 +79,16 @@ class Menu(ctk.CTkFrame):
         self.accuracy.configure(text=f'{accuracy}%')
 
     def show_statistics(self) -> None:
-        stats_icon = Image.open(resource_path('assets\\stats.png')).resize((32, 32))
-        stats_image = ctk.CTkImage(light_image=stats_icon, dark_image=stats_icon, size=(32, 32))
-        self.show_statistics_button = ctk.CTkLabel(self, text='', image=stats_image)
+        stats_icon = Image.open(resource_path('assets\\stats.png')).resize((25, 25))
+        stats_image = ctk.CTkImage(light_image=stats_icon, dark_image=stats_icon, size=(25, 25))
+        self.show_statistics_button = ctk.CTkLabel(self, text='', image=stats_image, anchor=ctk.CENTER)
         self.show_statistics_button.pack(side=ctk.LEFT, padx=10, pady=10)
         self.show_statistics_button.bind('<Button-1>', self.display_statistics)
 
     def display_statistics(self, event) -> None:
+        self.chart_frame = ctk.CTkFrame(self.master, fg_color=COLOR.BACKGROUND)
+        self.chart_frame.place(relx=0.5, rely=0.5, anchor=ctk.CENTER, relwidth=1, relheight=1)
+        pywinstyles.set_opacity(self.chart_frame, value=0, color='#000001')
         stats = user_statistics.get_stats()
         times = list(range(len(stats)))
         wpm_values = [stat[1] for stat in stats]
@@ -96,26 +99,29 @@ class Menu(ctk.CTkFrame):
         fig.patch.set_facecolor(COLOR.BACKGROUND)
         ax = fig.add_subplot(111)
         ax.set_facecolor(COLOR.BACKGROUND)
-        ax.plot(times, wpm_values, label="WPM", marker='o')
-        ax.plot(times, accuracy_values, label="Accuracy", marker='o')
+        wpm_line, = ax.plot(times, wpm_values, label="WPM [words/s]", marker='o', color=COLOR.WPM)
+        accuracy_line, = ax.plot(times, accuracy_values, label="Accuracy [%]", marker='o', color=COLOR.ACCURACY)
         ax.legend(frameon=False, fontsize=10, loc='best', labelcolor=COLOR.TEXT)
         ax.tick_params(axis='x', colors=COLOR.TEXT)
         ax.tick_params(axis='y', colors=COLOR.TEXT)
         ax.xaxis.set_major_locator(MultipleLocator(1))
         ax.yaxis.set_major_locator(MultipleLocator(10))
-        ax.xaxis.set_minor_locator(AutoMinorLocator(4))
-        ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-        ax.grid(which='major', linestyle='-', linewidth='0.5', color=COLOR.GRAY)
-        ax.grid(which='minor', linestyle='-', linewidth='0.5', color=COLOR.GRAY)
+        for i, wpm in enumerate(wpm_values):
+            ax.annotate(f'{round(wpm, 2)}', (times[i], wpm_values[i]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=8, color=COLOR.TEXT)
+        for i, accuracy in enumerate(accuracy_values):
+            ax.annotate(f'{int(accuracy)}', (times[i], accuracy_values[i]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=8, color=COLOR.TEXT,)
         for spine in ax.spines.values():
             spine.set_edgecolor(COLOR.TEXT)
-        self.chart_frame = ctk.CTkFrame(self.master, fg_color=COLOR.BACKGROUND)
-        self.chart_frame.place(relx=0.5, rely=0.5, anchor=ctk.CENTER, relwidth=1, relheight=1)
         canvas = FigureCanvasTkAgg(fig, self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(side=ctk.TOP, fill=ctk.BOTH, expand=1)
         self.master.bind('<Escape>', self.close_statistics)
+        self.master.unbind('<KeyPress>')
+        self.master.unbind('<KeyRelease>')
+        self.master.after(101, lambda: pywinstyles.set_opacity(self.chart_frame, value=1, color='#000001') if self.chart_frame.winfo_exists() else None)
 
     def close_statistics(self, event) -> None:
         self.chart_frame.destroy()
         self.master.unbind('<Escape>')
+        self.master.bind('<KeyPress>', self.master.type_test.on_press)
+        self.master.bind('<KeyRelease>', self.master.type_test.on_release)
