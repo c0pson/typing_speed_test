@@ -34,7 +34,7 @@ class TypingTest(ctk.CTkFrame):
         pywinstyles.set_opacity(self.user_input_frame, value=0.99, color='#000001')
 
     def on_press(self, event) -> None:
-        if self.current_char_index == 0:
+        if self.current_char_index == 0 and event.char in self.valid_input:
             self.cancel = False
             self.start_timer()
         if len(self.sentence) == self.current_char_index and event.keysym != 'BackSpace':
@@ -96,6 +96,7 @@ class TypingTest(ctk.CTkFrame):
         self.after(221, lambda: self.user_inputs.pop(0))
 
     def restart(self) -> None:
+        self.accuracy()
         self.cancel = True
         self.bad_chars = 0
         self.penalty = .5
@@ -121,6 +122,8 @@ class TypingTest(ctk.CTkFrame):
         wpm = len(self.sentence.split()) / (self.end_time / 60)
         cpm = len(self.sentence) / (self.end_time / 60)
         self.master.update_counter(wpm, cpm)
+        accuracy_ = int((1-(self.bad_chars/len(self.sentence)))*100)
+        self.master.insert_to_db(wpm, cpm, accuracy_)
 
     def animate_hide(self, val: float) -> None:
         if val >= .9:
@@ -147,3 +150,6 @@ class TypingTest(ctk.CTkFrame):
             return
         pywinstyles.set_opacity(self, value=(0+val), color='#000001')
         self.master.after(16, lambda: self.animate_show(val=val+0.03))
+
+    def accuracy(self) -> None:
+        self.master.update_percentage(int((1-(self.bad_chars/len(self.sentence)))*100))
